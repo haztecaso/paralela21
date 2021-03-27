@@ -1,2 +1,6 @@
 tarballs
 lab
+
+__pycache__/
+*.py[cod]
+*.log
