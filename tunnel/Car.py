@@ -67,11 +67,11 @@ class Car():
 
     def _run(self):
         # Método privado que es ejecutado por el atributo process.
-        delay(1)
+        delay(0.1)
         print(f"{self} {bold('wants to enter')} the tunnel")
         self.monitor.wants_enter(self.dir)
         print(f"{self} {bold('enters')} the tunnel")
-        delay(0.1)
+        delay(0.01)
         self.monitor.leaves_tunnel(self.dir)
         print(f"{self} {bold('is out')} of the tunnel")
 

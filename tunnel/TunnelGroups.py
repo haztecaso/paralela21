@@ -31,7 +31,7 @@ class TunnelGroups(TunnelMonitor):
         máximo actual.
     """
 
-    def __init__(self, ncars:int = 100, interval:float=0.5):
+    def __init__(self, ncars:int = 100, interval:float = 0.05):
         """
         Constructora de la clase TunnelNaive.
 
