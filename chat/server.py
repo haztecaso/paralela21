@@ -108,13 +108,17 @@ class ChatServer():
             if not username2 == username:
                 data['conn'].send(payload)
 
-if __name__ == '__main__':
-    import sys
-    if len(sys.argv) > 1:
-        ip = sys.argv[1]
-    else:
-        ip = '127.0.0.1'
-    server = ChatServer(ip)
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="chat server")
+    parser.add_argument("-i", metavar="ip", default="127.0.0.1",
+                        help="server ip", type=str)
+    parser.add_argument("-p", metavar="port", default=6000,
+                        help="server port", type=int)
+    args = parser.parse_args()
+    if args.i == "all":
+        args.i = "0.0.0.0"
+    server = ChatServer(args.i, args.p)
     try:
         server.start()
     except KeyboardInterrupt:

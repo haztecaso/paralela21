@@ -229,6 +229,10 @@ class ChatClientTUI():
 
 
 def args():
+    return args
+
+
+if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description="chat client")
     parser.add_argument("-u", metavar="username",
@@ -236,15 +240,10 @@ def args():
     parser.add_argument("-i", metavar="ip", default="127.0.0.1",
                         help="server ip", type=str)
     parser.add_argument("-p", metavar="port", default=6000,
-                        help="span of pages to include", type=int)
+                        help="server port", type=int)
     args = parser.parse_args()
     if not args.u:
         args.u= input("username: ")
-    return args
-
-
-if __name__ == '__main__':
-    args = args()
     client = ChatClient(args.u, args.i, args.p)
     try:
         client.start()
