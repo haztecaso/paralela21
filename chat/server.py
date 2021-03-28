@@ -104,11 +104,9 @@ class ChatServer():
     def broadcast_message(self, username, payload):
         timestamp, message, _ = decode_message(payload)
         print(f"[{username}] {message}")
-        print(f"broadcasting message from {username} to other users")
         for username2, data in self.clients.items():
             if not username2 == username:
                 data['conn'].send(payload)
-                print(f"sent to {username2}")
 
 if __name__ == '__main__':
     import sys

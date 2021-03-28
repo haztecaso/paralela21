@@ -45,6 +45,7 @@ class ChatClient():
                 self.receiver.start()
                 self.sender.join()
                 self.receiver.join()
+        # self.send_loop()
 
     def connect(self):
         """
@@ -61,9 +62,8 @@ class ChatClient():
             return True
 
     def close(self):
-        if self.conn:
-            self.send_payload(CLOSE)
-            self.conn.close()
+        self.send_payload(CLOSE)
+        self.conn.close()
         self.conn = None
 
     def stop(self):
@@ -77,8 +77,6 @@ class ChatClient():
             pass
         finally:
             self.tui.stop()
-            import sys
-            sys.exit()
 
     def send_loop(self):
         self.debug("Starting send loop")
@@ -171,8 +169,7 @@ class ChatClientTUI():
     def redraw_history(self, history):
         self.history_window.clear()
         self.history_window.border(0)
-        rows, cols = ChatClientTUI.terminal_size()
-        self.history_window.resize(rows-1, cols)
+        rows = ChatClientTUI.terminal_size()[0]
         row = rows - 3
         i = len(history) - 1
         while row >= 1 and i > 0:
@@ -180,7 +177,7 @@ class ChatClientTUI():
             timestamp, message, username = decode_message(payload)
             timestamp = timestamp.strftime("%T")
             self.history_window.move(row,1)
-            self.history_window.addstr(f"{timestamp} [{username}] {message}")
+            self.history_window.addstr(f"{timestamp} [{self.username}] {message}")
             row -= 1
             i -= 1
         self.history_window.refresh()
@@ -192,8 +189,6 @@ class ChatClientTUI():
         self.prompt_window.addstr(f'{self.username}> ')
 
     def redraw_prompt(self):
-        rows, cols = ChatClientTUI.terminal_size()
-        self.prompt_window.resize(1, cols)
         self.prompt_window.refresh()
 
     def reset_prompt(self):
@@ -231,15 +226,13 @@ class ChatClientTUI():
 def args():
     import argparse
     parser = argparse.ArgumentParser(description="chat client")
-    parser.add_argument("-u", metavar="username",
+    parser.add_argument("u", metavar="username",
                         help="user name", type=str)
-    parser.add_argument("-i", metavar="ip", default="127.0.0.1",
+    parser.add_argument("--i", metavar="ip", default="127.0.0.1",
                         help="server ip", type=str)
     parser.add_argument("-p", metavar="port", default=6000,
                         help="span of pages to include", type=int)
     args = parser.parse_args()
-    if not args.u:
-        args.u= input("username: ")
     return args
 
 
