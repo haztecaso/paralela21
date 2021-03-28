@@ -38,7 +38,7 @@ class ChatServer():
             assert payload['code'] == 1, "First message must be CONNECT"
             username = self.connect(payload, client_ip, conn)
             if username:
-                conn.send(ACK)
+                # conn.send(ACK)
                 p = Process(target=self._client_loop, args=(username,), name=f'{username} listener')
                 p.daemon = True
                 p.start()
@@ -50,7 +50,7 @@ class ChatServer():
         while username in self.clients:
             try:
                 payload = conn.recv()
-                conn.send(ACK)
+                # conn.send(ACK)
             except Exception as e:
                 if type(e) is EOFError:
                     print(f"Connection down :(")
@@ -75,7 +75,7 @@ class ChatServer():
         if username not in self.clients:
             print(f"{username} CONNECTED")
             self.clients[username] = { 'conn' : conn, 'ip' : client_ip }
-            conn.send(ACK)
+            # conn.send(ACK)
             return username
         else:
             message = f"{username} is already connected!"

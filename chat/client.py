@@ -8,16 +8,6 @@ import curses, curses.textpad
 import os
 import sys, traceback
 
-DEBUG = 'curses'
-
-if DEBUG == 'curses':
-    manager = Manager()
-    debug_history = manager.list()
-
-def debug(x):
-    if DEBUG == 'curses':
-        debug_history.append(x)
-
 class ChatClient():
     def __init__(self, username, ip="127.0.0.1", port=6000, authkey=b'secret password'):
         self.username = username
@@ -25,17 +15,22 @@ class ChatClient():
         self.authkey = authkey
         self.conn = None
         self.manager = Manager()
-        self.history = self.manager.list([])
+        self.history = self.manager.list()
         self.sender = None
         self.receiver = None
         self.lock = Lock()
-        self.tui = ChatClientTUI(self.username, DEBUG == 'curses')
+        self.tui = ChatClientTUI(self.username)
+        self.debug_history = self.manager.list()
+
+    def debug(self, message):
+        self.debug_history.append(message)
+        self.tui.redraw_debug(self.debug_history)
 
     def start(self):
         """
         Create connection and processes for sending and receiving messages
         """
-        debug(f"STARTING CLIENT FOR USERNAME {self.username}")
+        # debug(f"STARTING CLIENT FOR USERNAME {self.username}")
         try:
             self.conn = Client(address=self.addr, authkey=self.authkey)
         except ConnectionRefusedError as e:
@@ -56,12 +51,12 @@ class ChatClient():
         """
         Send CONNECT message to server and check if
         """
-        debug("Starting CONNECT")
+        self.debug("Starting CONNECT")
         try:
             payload = encode_connect(self.username)
             self.send_payload(payload)
         except ValueError as e:
-            debug(e)
+            self.debug(e)
             return False
         else:
             return True
@@ -84,9 +79,9 @@ class ChatClient():
             self.tui.stop()
 
     def send_loop(self):
-        debug("Starting send loop")
+        self.debug("Starting send loop")
         while self.conn:
-            debug("Starting send iter")
+            self.debug("Starting send iter")
             message = self.tui.input()
             if message == '/quit':
                 self.stop()
@@ -94,21 +89,17 @@ class ChatClient():
                 try:
                     self.send_message(message)
                 except ValueError as e:
-                    debug(e)
+                    self.debug(e)
 
     def receive_loop(self):
-        debug("Starting receive loop")
+        self.debug("Starting receive loop")
         while self.conn:
-            poll = self.conn.poll()
-            # debug(f"Starting receive iter. poll = {poll}")
-            if poll:
-                debug("polling")
-                try:
-                    payload = self.conn.recv()
-                    if payload['code'] == 3:
-                        self.add_message(payload)
-                except Exception as e:
-                    debug(f"Error receiving message: {e}")
+            try:
+                payload = self.conn.recv()
+                if payload['code'] == 3:
+                    self.add_message(payload)
+            except Exception as e:
+                self.debug(f"Error receiving message: {e}")
 
     def add_message(self, payload):
         assert payload['code'] == 3, 'Code must be 3 (MESSAGE)'
@@ -124,25 +115,11 @@ class ChatClient():
         self.send_payload(payload)
 
     def send_payload(self, payload):
-        """
-        Send payload and receive acknowledge
-        """
         try:
             self.conn.send(payload)
-            response = self.conn.recv()
-        except EOFError:
-            debug(f"Error receiving response: EOFError")
+            # response = self.conn.recv()
         except Exception as e:
-            debug(f"Error sending message: {e}")
-        else:
-            if 'code' in response and response['code'] == 2:
-                debug('message received')
-            elif 'code' in response and response['code'] == -1:
-                debug(f"Error: {response['message']}")
-                debug("Error was critical: closing connection")
-                self.close()
-            else:
-                raise ValueError(f'Expecting ack but received: {response}')
+            self.debug(f"Error sending message: {e}")
 
 
 class ChatClientTUI():
@@ -158,6 +135,8 @@ class ChatClientTUI():
         self._start_curses()
         self.init_history_window()
         self.init_prompt_window()
+        if self.debug:
+            self.init_debug_window()
 
     def stop(self):
         self._stop_curses()
@@ -191,14 +170,15 @@ class ChatClientTUI():
         self.history_window.border(0)
         rows = ChatClientTUI.terminal_size()[0]
         row = rows - 3
-        for payload in history:
-            if row < 1:
-                break
+        i = len(history) - 1
+        while row >= 1 and i > 0:
+            payload = history[i]
             timestamp, message, username = decode_message(payload)
             timestamp = timestamp.strftime("%T")
             self.history_window.move(row,1)
             self.history_window.addstr(f"{timestamp} [{username}] {message}")
             row -= 1
+            i -= 1
         self.history_window.refresh()
 
     def init_prompt_window(self):
@@ -221,18 +201,20 @@ class ChatClientTUI():
         return message
 
     def init_debug_window(self):
-        rows, cols = ChatClientTUI.terminal_size()
-        self.debug_window = curses.newwin(rows-1, cols//2+1, 0, 0)
+        if self.debug:
+            rows, cols = ChatClientTUI.terminal_size()
+            self.debug_window = curses.newwin(rows-1, cols//2+1, 0, 0)
 
     def redraw_debug(self, debug_history):
-        self.debug_window.clear()
-        rows = ChatClientTUI.terminal_size()[0]
-        row = rows - 3
-        for message in debug_history:
-            if row < 1:
-                break
-            self.debug_window.move(row,1)
-            self.debug_window.addstr(f"{message}")
+        if self.debug:
+            self.debug_window.clear()
+            rows = ChatClientTUI.terminal_size()[0]
+            row = rows - 3
+            for message in debug_history:
+                if row < 1:
+                    break
+                self.debug_window.move(row,1)
+                self.debug_window.addstr(f"{message}")
 
     @staticmethod
     def terminal_size():
