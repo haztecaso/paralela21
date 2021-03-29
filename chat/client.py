@@ -9,7 +9,8 @@ import os
 import sys, traceback
 
 class ChatClient():
-    def __init__(self, username, ip="127.0.0.1", port=6000, authkey=b'secret password'):
+    def __init__(self, username, ip="127.0.0.1", port=6000,\
+            authkey=b"secret password"):
         self.username = username
         self.addr = (ip, int(port))
         self.authkey = authkey
@@ -85,7 +86,7 @@ class ChatClient():
         while self.conn:
             self.debug("Starting send iter")
             message = self.tui.input()
-            if message == '/quit':
+            if message == "/quit":
                 self.stop()
             elif len(message) > 0:
                 try:
@@ -98,13 +99,13 @@ class ChatClient():
         while self.conn:
             try:
                 payload = self.conn.recv()
-                if payload['code'] == 3:
+                if payload["code"] == 3:
                     self.add_message(payload)
             except Exception as e:
                 self.debug(f"Error receiving message: {e}")
 
     def add_message(self, payload):
-        assert payload['code'] == 3, 'Code must be 3 (MESSAGE)'
+        assert payload["code"] == 3, "Code must be 3 (MESSAGE)"
         self.lock.acquire()
         self.history.append(payload) #TODO: optimize
         self.lock.release()
@@ -189,7 +190,7 @@ class ChatClientTUI():
         rows, cols = ChatClientTUI.terminal_size()
         self.prompt_window = curses.newwin(1, cols, rows-1, 0)
         self.prompt_window.keypad(1)
-        self.prompt_window.addstr(f'{self.username}> ')
+        self.prompt_window.addstr(f"{self.username}> ")
 
     def redraw_prompt(self):
         rows, cols = ChatClientTUI.terminal_size()
@@ -198,11 +199,11 @@ class ChatClientTUI():
 
     def reset_prompt(self):
         self.prompt_window.clear()
-        self.prompt_window.addstr(f'{self.username}> ')
+        self.prompt_window.addstr(f"{self.username}> ")
         self.redraw_prompt()
 
     def input(self):
-        message = str(self.prompt_window.getstr(),'utf-8')
+        message = str(self.prompt_window.getstr(),"utf-8")
         self.reset_prompt()
         return message
 
@@ -224,7 +225,7 @@ class ChatClientTUI():
 
     @staticmethod
     def terminal_size():
-        rows, cols = os.popen('stty size', 'r').read().split()
+        rows, cols = os.popen("stty size", "r").read().split()
         return (int(rows), int(cols))
 
 
@@ -232,7 +233,7 @@ def args():
     return args
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="chat client")
     parser.add_argument("-u", metavar="username",

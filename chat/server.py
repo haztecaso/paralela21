@@ -5,7 +5,7 @@ from message import *
 from time import sleep
 
 class ChatServer():
-    def __init__(self, ip="127.0.0.1", port=6000, authkey=b'secret password'):
+    def __init__(self, ip="127.0.0.1", port=6000, authkey=b"secret password"):
         self.addr = (ip, int(port))
         self.authkey = authkey
         self.manager = Manager()
@@ -35,18 +35,19 @@ class ChatServer():
         client_ip = self.listener.last_accepted[0]
         try:
             payload = conn.recv()
-            assert payload['code'] == 1, "First message must be CONNECT"
+            assert payload["code"] == 1, "First message must be CONNECT"
             username = self.connect(payload, client_ip, conn)
             if username:
                 # conn.send(ACK)
-                p = Process(target=self._client_loop, args=(username,), name=f'{username} listener')
+                p = Process(target=self._client_loop, args=(username,),\
+                        name=f"{username} listener")
                 p.daemon = True
                 p.start()
         except Exception as e:
             print(f"Error in registration: {type(e).__name__} [{e}]")
 
     def _client_loop(self, username):
-        conn = self.clients[username]['conn']
+        conn = self.clients[username]["conn"]
         while username in self.clients:
             try:
                 payload = conn.recv()
@@ -62,9 +63,9 @@ class ChatServer():
 
     def _parse_payload(self, username, payload):
         try:
-            if payload['code'] == 0:
+            if payload["code"] == 0:
                 self.client_close(username)
-            elif payload['code'] == 3:
+            elif payload["code"] == 3:
                 self.broadcast_message(username, payload)
         except Exception as e:
             print(f"Error parsing payload: {e}")
@@ -74,7 +75,7 @@ class ChatServer():
         username = decode_connect(payload)
         if username not in self.clients:
             print(f"{username} CONNECTED")
-            self.clients[username] = { 'conn' : conn, 'ip' : client_ip }
+            self.clients[username] = { "conn" : conn, "ip" : client_ip }
             # conn.send(ACK)
             return username
         else:
@@ -86,7 +87,7 @@ class ChatServer():
 
     def client_close(self, username):
         if username in self.clients:
-            conn = self.clients[username]['conn']
+            conn = self.clients[username]["conn"]
             conn.close()
             print(f"{username} DISCONNECTED")
             del self.clients[username]
@@ -106,7 +107,7 @@ class ChatServer():
         print(f"[{username}] {message}")
         for username2, data in self.clients.items():
             if not username2 == username:
-                data['conn'].send(payload)
+                data["conn"].send(payload)
 
 if __name__ == "__main__":
     import argparse
