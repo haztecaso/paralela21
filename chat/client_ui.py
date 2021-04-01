@@ -54,7 +54,7 @@ class ChatClientUI():
         self.history_window.resize(rows-1, cols)
         row = rows - 3
         i = len(self.history) - 1
-        while row >= 1 and i > 0:
+        while row >= 1 and i >= 0:
             payload = self.history[i]
             timestamp, message, username = decode_message(payload)
             timestamp = timestamp.strftime("%T")
