@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from multiprocessing.connection import Listener
-from multiprocessing import Process, Manager
-from message import *
+from multiprocessing import Process, Manager, AuthenticationError
+from common import *
 from time import sleep
 
 class ChatServer():
@@ -31,8 +31,12 @@ class ChatServer():
             self.listener.close()
 
     def _listen(self):
-        conn = self.listener.accept()
-        client_ip = self.listener.last_accepted[0]
+        try:
+            conn = self.listener.accept()
+            client_ip = self.listener.last_accepted[0]
+        except AuthenticationError as e:
+            print("Authentication error")
+            return
         try:
             payload = conn.recv()
             assert payload["code"] == 1, "First message must be CONNECT"
@@ -108,6 +112,7 @@ class ChatServer():
         for username2, data in self.clients.items():
             if not username2 == username:
                 data["conn"].send(payload)
+
 
 if __name__ == "__main__":
     import argparse
