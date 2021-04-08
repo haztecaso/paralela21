@@ -7,11 +7,11 @@ from multiprocessing.connection import Listener
 from multiprocessing import Process
 import sys
 
-def client_listener(info, conn):
+def client_listener(info, conn_main):
     print(f"Opening listener at {info}")
     cl = Listener(address=(info['address'], info['port']),
             authkey=info['authkey'])
-    conn.send(info)
+    conn_main.send(info)
     print('........client listener starting')
     print('........accepting connections')
     while True:
