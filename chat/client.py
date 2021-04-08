@@ -36,39 +36,40 @@ class ChatClient():
         try:
             self.conn = Client(address=self.addr, authkey=self.authkey)
         except Exception as e:
-            print(e)
+            print(f"[ERROR] {e}")
         else:
-            self.ui.start()
-            self.ui.redraw()
-            self.receiver = Process(target=self.receive_loop,\
+            self.receiver = Process(target=self.receive_loop,
                                     name=f"{self.username} receiver")
-            self.sender   = Process(target=self.send_loop,\
+            self.sender = Process(target=self.send_loop,
                                     name=f"{self.username} sender")
             if self.connect():
+                self.ui.start()
                 self.sender.start()
                 self.receiver.start()
                 self.sender.join()
                 self.receiver.join()
+            else:
+                self.stop()
 
     def connect(self):
         self.debug("Starting CONNECT")
         try:
             payload = encode_connect(self.username)
             self.send_payload(payload)
+            response = self.conn.recv()
+            self.append_history(response)
         except ValueError as e:
             self.debug(e)
             return False
         else:
+            if response["code"] == -1:
+                message, critical = decode_error(response)
+                print(f"[ERROR] {message}")
+                if critical:
+                    return False
             return True
 
-    def close(self):
-        if self.conn:
-            self.send_payload(CLOSE)
-            self.conn.close()
-        self.conn = None
-
     def stop(self):
-        self.close()
         try:
             if type(self.sender) is Process:
                 self.sender.terminate()
@@ -80,15 +81,17 @@ class ChatClient():
             self.ui.stop()
             import sys
             sys.exit()
+        if self.conn:
+            self.send_payload(CLOSE)
+            self.conn.close()
+            self.conn = None
 
     def send_loop(self):
         self.debug("Starting send loop")
         while self.conn:
             self.debug("Starting send iter")
             message = self.ui.input()
-            if message == "/quit":
-                self.stop()
-            elif len(message) > 0:
+            if len(message) > 0:
                 try:
                     self.send_message(message)
                 except ValueError as e:
@@ -97,24 +100,27 @@ class ChatClient():
     def receive_loop(self):
         self.debug("Starting receive loop")
         while self.conn:
-            try:
-                payload = self.conn.recv()
-                if payload["code"] == 3:
-                    self.add_message(payload)
-            except Exception as e:
-                self.debug(f"Error receiving message: {e}")
+            if self.conn.poll():
+                try:
+                    payload = self.conn.recv()
+                    if payload["code"] == 3:
+                        self.update_history(payload)
+                except Exception as e:
+                    self.debug(f"Error receiving message: {e}")
 
-    def add_message(self, payload):
-        assert payload["code"] == 3, "Code must be 3 (MESSAGE)"
+    def append_history(self, payload):
         self.lock.acquire()
         self.history.append(payload) #TODO: optimize
         self.lock.release()
+
+    def update_history(self, payload):
+        self.append_history(payload)
         self.ui.redraw()
 
     def send_message(self, message):
         timestamp = datetime.now()
         payload = encode_message(timestamp, message, self.username)
-        self.add_message(payload)
+        self.update_history(payload)
         self.send_payload(payload)
 
     def send_payload(self, payload):

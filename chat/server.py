@@ -80,7 +80,7 @@ class ChatServer():
         if username not in self.clients:
             print(f"{username} CONNECTED")
             self.clients[username] = { "conn" : conn, "ip" : client_ip }
-            # conn.send(ACK)
+            conn.send(ACK)
             return username
         else:
             message = f"{username} is already connected!"

@@ -19,6 +19,8 @@ class ChatClientUI():
         self.init_prompt_window()
         if self.debug:
             self.init_debug_window()
+        self.redraw()
+
 
     def stop(self):
         self._stop_curses()
@@ -56,10 +58,15 @@ class ChatClientUI():
         i = len(self.history) - 1
         while row >= 1 and i >= 0:
             payload = self.history[i]
-            timestamp, message, username = decode_message(payload)
-            timestamp = timestamp.strftime("%T")
-            self.history_window.move(row,1)
-            self.history_window.addstr(f"{timestamp} [{username}] {message}")
+            if payload["code"] == 3:
+                timestamp, message, username = decode_message(payload)
+                timestamp = timestamp.strftime("%T")
+                self.history_window.move(row,1)
+                self.history_window.addstr(f"{timestamp} [{username}] {message}")
+            elif payload["code"] == -1:
+                message, critical = decode_error(payload)
+                self.history_window.move(row,1)
+                self.history_window.addstr(f"[ERROR] {message}")
             row -= 1
             i -= 1
         self.history_window.refresh()
