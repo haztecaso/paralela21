@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-
-
 def encode_error(message, critical=False):
     return {
             'code': -1,

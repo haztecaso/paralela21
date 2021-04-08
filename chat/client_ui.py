@@ -21,7 +21,6 @@ class ChatClientUI():
             self.init_debug_window()
         self.redraw()
 
-
     def stop(self):
         self._stop_curses()
 
