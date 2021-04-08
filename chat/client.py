@@ -3,7 +3,7 @@
 from multiprocessing.connection import Client
 from multiprocessing import Process, Manager, Lock
 from datetime import datetime
-from message import *
+from common import *
 from client_ui import *
 import sys, traceback
 
@@ -35,8 +35,8 @@ class ChatClient():
         # self.debug(f"STARTING CLIENT FOR USERNAME {self.username}")
         try:
             self.conn = Client(address=self.addr, authkey=self.authkey)
-        except ConnectionRefusedError as e:
-            print("Connection refused :(")
+        except Exception as e:
+            print(e)
         else:
             self.ui.start()
             self.ui.redraw()
@@ -123,10 +123,6 @@ class ChatClient():
             # response = self.conn.recv()
         except Exception as e:
             self.debug(f"Error sending message: {e}")
-
-
-def args():
-    return args
 
 
 if __name__ == "__main__":

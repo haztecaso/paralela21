@@ -1,6 +1,6 @@
 import os
 import curses, curses.textpad
-from message import *
+from common import *
 
 class ChatClientUI():
     def __init__(self, username, history, debug = False):
