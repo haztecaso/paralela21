@@ -124,6 +124,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if args.i == "all":
         args.i = "0.0.0.0"
+    elif args.i == "auto":
+        import urllib.request
+        args.i = urllib.request.urlopen('https://ident.me').read().decode('utf8')
     server = ChatServer(args.i, args.p)
     try:
         server.start()
