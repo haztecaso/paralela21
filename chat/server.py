@@ -71,6 +71,7 @@ class ChatServer():
             if payload["code"] == 0:
                 self.client_close(username)
             elif payload["code"] == 3:
+                assert payload["username"] == username
                 self.broadcast_message(username, payload)
         except Exception as e:
             print(f"Error parsing payload: {e}")
