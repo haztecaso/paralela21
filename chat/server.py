@@ -3,6 +3,7 @@ from multiprocessing.connection import Listener
 from multiprocessing import Process, Manager, AuthenticationError
 from common import *
 from time import sleep
+from datetime import datetime
 
 class ChatServer():
     def __init__(self, ip="127.0.0.1", port=6000, authkey=b"secret password"):
@@ -80,6 +81,8 @@ class ChatServer():
         if username not in self.clients:
             print(f"{username} CONNECTED")
             self.clients[username] = { "conn" : conn, "ip" : client_ip }
+            payload = encode_message(datetime.now(),f"{username} joined the room.","SERVER")
+            self.broadcast_message("SERVER", payload)
             conn.send(ACK)
             return username
         else:
