@@ -12,6 +12,7 @@ class ChatServer():
         self.manager = Manager()
         self.clients = self.manager.dict()
         self.listener = None
+        self.history = MessageHistory(manager = self.manager)
 
     def usernames(self):
         users = []
@@ -86,8 +87,9 @@ class ChatServer():
             self.clients[username] = { "conn" : conn, "ip" : client_ip }
             message = Message(type=MESSAGE, username = "SERVER",
                              message=f"{username} joined the room.") 
-            self.broadcast_message("SERVER", message)
-            conn.send(ACK)
+            self.broadcast_message("SERVER", message, [username])
+            response = Message(type=MESSAGE_HISTORY, history = self.history)
+            conn.send(response.encode())
             return username
         else:
             message = Message(type=ERROR,
@@ -102,7 +104,10 @@ class ChatServer():
         if username in self.clients:
             conn = self.clients[username]["conn"]
             conn.close()
-            print(f"{username} DISCONNECTED")
+            message = f"{username} DISCONNECTED"
+            print(message)
+            message = Message(type = MESSAGE, username="SERVER", message = message)
+            self.broadcast_message("SERVER", message)
             del self.clients[username]
         else:
             print(f"{username} is not in current")
@@ -115,10 +120,11 @@ class ChatServer():
     def stop(self):
         self.close_all()
 
-    def broadcast_message(self, username_from, message):
+    def broadcast_message(self, username_from, message, excluded_users=[]):
         print(f"[{username_from}] {message.get('message')}")
+        self.history.add(message)
         for username, data in self.clients.items():
-            if not username == username_from:
+            if not username == username_from and not username in excluded_users:
                 data["conn"].send(message.encode())
 
 

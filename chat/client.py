@@ -56,13 +56,16 @@ class ChatClient():
         try:
             message = Message(type = CONNECT, username = self.username)
             self.send_payload(message.encode())
-            response = Message(payload = self.conn.recv())
-            self.append_history(response)
+            response = self.conn.recv()
+            history = response.get('history')
+            for message in decode_history(history):
+                self.append_history(message)
         except ValueError as e:
             self.debug(e)
             return False
         else:
-            if response.type == ERROR:
+            if response['type_code'] == ERROR['code']:
+                response = Message(payload = response)
                 message = response.get('message')
                 critical = response.get('critical')
                 print(f"[ERROR] {message}")
