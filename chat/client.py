@@ -16,7 +16,7 @@ class ChatClient():
 
         self.conn     = None
         self.manager  = Manager()
-        self.history  = self.manager.list()
+        self.history  = MessageHistory(manager = self.manager)
 
         self.sender   = None
         self.receiver = None
@@ -109,13 +109,13 @@ class ChatClient():
                 except Exception as e:
                     self.debug(f"Error receiving message: {e}")
 
-    def append_history(self, payload):
+    def append_history(self, message):
         self.lock.acquire()
-        self.history.append(payload) #TODO: optimize
+        self.history.add(message)
         self.lock.release()
 
-    def update_history(self, payload):
-        self.append_history(payload)
+    def update_history(self, message):
+        self.append_history(message)
         self.ui.redraw()
 
     def send_message(self, message):

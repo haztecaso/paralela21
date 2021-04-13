@@ -56,7 +56,7 @@ class ChatClientUI():
         row = rows - 3
         i = len(self.history) - 1
         while row >= 1 and i >= 0:
-            message = self.history[i]
+            message = self.history.messages[i]
             if message.type == MESSAGE:
                 timestamp = message.get('timestamp').strftime("%T")
                 username = message.get('username')

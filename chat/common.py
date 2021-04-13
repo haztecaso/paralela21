@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from datetime import datetime
+import bisect
 
 ERROR = {
         'name' : 'Error',
@@ -100,12 +101,19 @@ class Message():
     def get(self, key):
         return self.data[key]
 
+    @property
+    def timestamp(self):
+        return self.get('timestamp')
+
     def encode(self):
         payload = {}
         payload['type_code'] = self.type['code']
         for key in self.data:
             payload[key] = self.data[key]
         return payload
+
+    def __lt__(self, other):
+        return self.timestamp < other.timestamp
 
     def __str__(self):
         result = f"type: {self.type['name']}\n"
@@ -129,13 +137,14 @@ class Message():
 
 class MessageHistory():
     def __init__(self, **args):
-        messages = args.get('messages',[])
-        if 'manager' in args:
-            self.manager = args['manager']
-            self.messages = self.manager.list(messages)
-        else:
-            self.manager = None
-            self.messages = messages
+        self.manager = args['manager']
+        self.messages = self.manager.list(args.get('messages',[]))
+
+    def add(self, new_message):
+        bisect.insort(self.messages, new_message)
+
+    def __len__(self):
+        return len(self.messages)
 
     def __str__(self):
         result = ""
