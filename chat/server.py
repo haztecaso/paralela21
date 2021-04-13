@@ -38,18 +38,18 @@ class ChatServer():
         except AuthenticationError as e:
             print("Authentication error")
             return
-        try:
-            payload = conn.recv()
-            assert payload["code"] == 1, "First message must be CONNECT"
-            username = self.connect(payload, client_ip, conn)
-            if username:
-                # conn.send(ACK)
-                p = Process(target=self._client_loop, args=(username,),\
-                        name=f"{username} listener")
-                p.daemon = True
-                p.start()
-        except Exception as e:
-            print(f"Error in registration: {type(e).__name__} [{e}]")
+        # try:
+        payload = conn.recv()
+        assert payload["type_code"] == CONNECT['code'], "First message must be CONNECT"
+        username = self.connect(payload, client_ip, conn)
+        if username:
+            # conn.send(ACK)
+            p = Process(target=self._client_loop, args=(username,),\
+                    name=f"{username} listener")
+            p.daemon = True
+            p.start()
+        # except Exception as e:
+        #     print(f"Error in registration: {type(e).__name__} [{e}]")
 
     def _client_loop(self, username):
         conn = self.clients[username]["conn"]
@@ -67,29 +67,34 @@ class ChatServer():
                 self._parse_payload(username, payload)
 
     def _parse_payload(self, username, payload):
+        message = Message(payload = payload)
         try:
-            if payload["code"] == 0:
+            if message.type == CLOSE:
                 self.client_close(username)
-            elif payload["code"] == 3:
-                assert payload["username"] == username
-                self.broadcast_message(username, payload)
+            elif message.type == MESSAGE:
+                self.broadcast_message(username, message)
         except Exception as e:
             print(f"Error parsing payload: {e}")
             print(f"payload = {payload}")
 
     def connect(self, payload, client_ip, conn):
-        username = decode_connect(payload)
+        message = Message(payload = payload)
+        assert message.type == CONNECT, 'message must be of type CONNECT'
+        username = message.get('username')
         if username not in self.clients:
             print(f"{username} CONNECTED")
             self.clients[username] = { "conn" : conn, "ip" : client_ip }
-            payload = encode_message(datetime.now(),f"{username} joined the room.","SERVER")
-            self.broadcast_message("SERVER", payload)
+            message = Message(type=MESSAGE, username = "SERVER",
+                             message=f"{username} joined the room.") 
+            self.broadcast_message("SERVER", message)
             conn.send(ACK)
             return username
         else:
-            message = f"{username} is already connected!"
+            message = Message(type=ERROR,
+                              message=f"{username} is already connected!",
+                              critical = True)
             print(message)
-            conn.send(encode_error(message, True))
+            conn.send(message.encode())
             conn.close()
             return False
 
@@ -110,12 +115,11 @@ class ChatServer():
     def stop(self):
         self.close_all()
 
-    def broadcast_message(self, username, payload):
-        timestamp, message, _ = decode_message(payload)
-        print(f"[{username}] {message}")
-        for username2, data in self.clients.items():
-            if not username2 == username:
-                data["conn"].send(payload)
+    def broadcast_message(self, username_from, message):
+        print(f"[{username_from}] {message.get('message')}")
+        for username, data in self.clients.items():
+            if not username == username_from:
+                data["conn"].send(message.encode())
 
 
 if __name__ == "__main__":

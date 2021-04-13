@@ -56,14 +56,16 @@ class ChatClientUI():
         row = rows - 3
         i = len(self.history) - 1
         while row >= 1 and i >= 0:
-            payload = self.history[i]
-            if payload["code"] == 3:
-                timestamp, message, username = decode_message(payload)
-                timestamp = timestamp.strftime("%T")
+            message = self.history[i]
+            if message.type == MESSAGE:
+                timestamp = message.get('timestamp').strftime("%T")
+                username = message.get('username')
+                message = message.get('message')
                 self.history_window.move(row,1)
                 self.history_window.addstr(f"{timestamp} [{username}] {message}")
-            elif payload["code"] == -1:
-                message, critical = decode_error(payload)
+            elif message.type == ERROR:
+                message = message.get('message')
+                # critical = message.get('critical')
                 self.history_window.move(row,1)
                 self.history_window.addstr(f"[ERROR] {message}")
             row -= 1

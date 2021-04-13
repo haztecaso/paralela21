@@ -1,116 +1,146 @@
 #!/usr/bin/env python3
+from datetime import datetime
 
-def encode_error(message, critical=False):
-    return {
-            'code': -1,
-            'message': message,
-            'critical': critical
-            }
+ERROR = {
+        'name' : 'Error',
+        'code' : -1,
+        'keys' : [
+            { 'name': 'message', 'type': str, 'optional': False },
+            { 'name': 'critical', 'type': bool, 'optional': True, 'default': False},
+            ],
+        }
 
-def decode_error(payload):
-    assert payload['code'] == -1
-    message = str(payload['message'])
-    critical = bool(payload['critical'])
-    return (message, critical)
+CLOSE = {
+        'name' : 'Close',
+        'code' : 0,
+        'keys' : []
+        }
 
-def decode_close(payload):
-    assert payload['code'] == 0
-    return payload['username']
+CONNECT = {
+        'name' : 'Connect',
+        'code' : 1,
+        'keys' : [ { 'name': 'username', 'type': str, 'optional': False } ]
+        } 
 
-def encode_connect(username):
-    return {
-            'code' : 1,
-            'username' : username
-            }
+ACK = {
+        'name' : 'Acknowledge',
+        'code' : 2,
+        'keys' : []
+        }
 
-ACK = { 'code': 2 }
+MESSAGE = {
+        'name' : 'Message',
+        'code' : 3,
+        'keys' : [
+            { 'name': 'message', 'type': str, 'optional': False },
+            { 'name': 'username', 'type': str, 'optional': False },
+            ]
+        }
 
-def decode_connect(payload):
-    assert payload['code'] == 1
-    return payload['username']
-
-def encode_message(timestamp, message, username=None):
-    return {
-            'code' : 3,
-            'timestamp' : timestamp,
-            'message' : message,
-            'username' : username
-            }
-
-def decode_message(payload):
-    assert payload['code'] == 3
-    timestamp = payload['timestamp']
-    message = str(payload['message'])
-    username = str(payload['username'])
-    return (timestamp, message, username)
+MESSAGE_TYPES = [ERROR, CLOSE, CONNECT, ACK, MESSAGE]
 
 
-# IDEA DE CLASE PARA LOS MENSAJES
+def code_to_type(code):
+    for TYPE in MESSAGE_TYPES:
+        if TYPE['code'] == code:
+            return TYPE
 
-# ERROR = {
-#         'code' : -1,
-#         'keys' : ['message', 'critical']
-#         }
+class Message():
+    """
+    Inmmutable class
+    """
 
-# CLOSE = {
-#         'code' : 0,
-#         'keys' : []
-#         }
+    def __init__(self, **kwargs):
+        self._data = { 'timestamp': datetime.now() }
+        if 'code' in kwargs:
+            self._type = code_to_type(kwargs['code'])
+            del kwargs['code']
+        elif 'type' in kwargs:
+            self._type = kwargs['type']
+            del kwargs['type']
+        elif 'payload' in kwargs:
+            payload = kwargs['payload']
+            del kwargs['payload']
+            self._type = code_to_type(payload['type_code'])
+            del payload['type_code']
+            self._data['timestamp'] = payload['timestamp']
+            del payload['timestamp']
+            self._payload_hash = payload['hash']
+            del payload['hash']
+            for key in payload:
+                kwargs[key] = payload[key]
+        else:
+            raise ValueError
+        for key in self.type['keys']:
+            key_name = key['name']
+            if key_name in kwargs:
+                assert key['type'] == type(kwargs[key_name]),\
+                        f"key {key_name} must be of type {key['type'].__name__}"
+                self._data[key_name] = kwargs[key_name]
+                del kwargs[key_name]
+            elif key['optional']:
+                    self._data[key_name] = key['default']
+            else:
+                raise ValueError(f"Required key missing: {key['name']}")
+        error_message = ""
+        for key in kwargs:
+            error_message+=f"Unknown key: {key}\n"
+        if error_message:
+            ValueError(error_message[0:-1])
+        self._data['hash'] = hash(self)
 
-# CONNECT = {
-#         'code' : 1,
-#         'keys' : ['username']
-#         } 
+    @property
+    def type(self):
+        return self._type
 
-# ACK = {
-#         'code' : 2,
-#         'keys' : []
-#         }
+    @property
+    def data(self):
+        return self._data.copy()
 
-# MESSAGE = {
-#         'code' : 3,
-#         'keys' : ['message', 'timestamp', 'username']
-#         }
+    def get(self, key):
+        return self.data[key]
+
+    def encode(self):
+        payload = {}
+        payload['type_code'] = self.type['code']
+        for key in self.data:
+            payload[key] = self.data[key]
+        return payload
+
+    def __str__(self):
+        result = f"type: {self.type['name']}\n"
+        for key, data in self.data.items():
+            result += f"{key}: {data}\n"
+        return result[0:-1]
+
+    def __repr__(self):
+        return f"Message of type {self.type['code']}, hash {hash(self)}"
+
+    def __hash__(self):
+        if 'hash' in self.data:
+            result = self.data['hash']
+        else:
+            result = self.type['code']
+            for key in self.data:
+                if key != 'hash':
+                    result = abs(hash((result, self.data[key])))
+        return result
 
 
-# def code_to_type(code):
-#     if code == -1:
-#         return ERROR
-#     elif code == 0:
-#         return CLOSE
-#     elif code == 1:
-#         return CONNECT
-#     elif code == 2:
-#         return ACK
-#     elif code == 3:
-#         return MESSAGE
+class MessageHistory():
+    def __init__(self, **args):
+        messages = args.get('messages',[])
+        if 'manager' in args:
+            self.manager = args['manager']
+            self.messages = self.manager.list(messages)
+        else:
+            self.manager = None
+            self.messages = messages
 
-# class Message():
-#     def __init__(self, **kwargs):
-#         if 'code' in kwargs:
-#             self.type = code_to_type(kwargs['code'])
-#             del kwargs['code']
-#         elif 'message_type' in kwargs:
-#             self.type = kwargs['message_type']
-#             del kwargs['message_type']
-#         else:
-#             raise ValueError
-#         self.data = {}
-#         self.set_data(kwargs)
+    def __str__(self):
+        result = ""
+        for message in self.messages:
+            result += f"{message}\n"
+        return result
 
-#     def set_data(self, data):
-#         for key in self.type['keys']:
-#             if key in data:
-#                 self.data[key] = data[key]
-#                 del data[key]
-#             else:
-#                 raise ValueError(f"Required key missing: {key}")
-#         for key in data:
-#             raise ValueError(f"Unknown key: {key}")
 
-#     def encode(self):
-#         payload = {}
-#         payload['code'] = self.type['code']
-#         for key in self.data:
-#             payload[key] = self.data[key]
-#         return payload 

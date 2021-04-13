@@ -54,16 +54,17 @@ class ChatClient():
     def connect(self):
         self.debug("Starting CONNECT")
         try:
-            payload = encode_connect(self.username)
-            self.send_payload(payload)
-            response = self.conn.recv()
+            message = Message(type = CONNECT, username = self.username)
+            self.send_payload(message.encode())
+            response = Message(payload = self.conn.recv())
             self.append_history(response)
         except ValueError as e:
             self.debug(e)
             return False
         else:
-            if response["code"] == -1:
-                message, critical = decode_error(response)
+            if response.type == ERROR:
+                message = response.get('message')
+                critical = response.get('critical')
                 print(f"[ERROR] {message}")
                 if critical:
                     return False
@@ -102,9 +103,9 @@ class ChatClient():
         while self.conn:
             if self.conn.poll():
                 try:
-                    payload = self.conn.recv()
-                    if payload["code"] == 3:
-                        self.update_history(payload)
+                    message = Message(payload = self.conn.recv())
+                    if message.type == MESSAGE:
+                        self.update_history(message)
                 except Exception as e:
                     self.debug(f"Error receiving message: {e}")
 
@@ -118,10 +119,9 @@ class ChatClient():
         self.ui.redraw()
 
     def send_message(self, message):
-        timestamp = datetime.now()
-        payload = encode_message(timestamp, message, self.username)
-        self.update_history(payload)
-        self.send_payload(payload)
+        message = Message(type=MESSAGE, username = self.username, message = message)
+        self.update_history(message)
+        self.send_payload(message.encode())
 
     def send_payload(self, payload):
         try:
