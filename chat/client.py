@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-
 from multiprocessing.connection import Client
 from multiprocessing import Process, Manager, Lock
 from datetime import datetime
-from common import *
-from client_ui import *
 import sys, traceback
+
+from messages import *
+from client_ui import *
 
 class ChatClient():
     def __init__(self, username, ip="127.0.0.1", port=6000,\

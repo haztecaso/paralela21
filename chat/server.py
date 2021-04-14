@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 from multiprocessing.connection import Listener
 from multiprocessing import Process, Manager, AuthenticationError
-from common import *
 from time import sleep
 from datetime import datetime
+
+from messages import *
 
 class ChatServer():
     def __init__(self, ip="127.0.0.1", port=6000, authkey=b"secret password"):
