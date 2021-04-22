@@ -2,7 +2,7 @@
 from multiprocessing.connection import Client
 from multiprocessing import Process, Manager, Lock
 from datetime import datetime
-import sys, traceback
+import logging
 
 from messages import *
 from client_ui import *
@@ -22,25 +22,27 @@ class ChatClient():
         self.receiver = None
         self.lock     = Lock()
         self.ui      = ChatClientUI(self.username, self.history)
-        self.debug_history = self.manager.list()
 
-    def debug(self, message):
-        self.debug_history.append(message)
-        self.ui.redraw_debug(self.debug_history)
+    def log(self, msg, **args):
+        level = args.get('level', 'debug')
+        if level == 'debug':
+            logging.debug(msg)
+        elif level == 'info':
+            logging.info(msg)
 
     def start(self):
         """
         Create connection and processes for sending and receiving messages
         """
-        # self.debug(f"STARTING CLIENT FOR USERNAME {self.username}")
+        self.log(f"STARTING CLIENT (username: {self.username})", level = 'info')
         try:
             self.conn = Client(address=self.addr, authkey=self.authkey)
         except Exception as e:
             print(f"[ERROR] {e}")
         else:
-            self.receiver = Process(target=self.receive_loop,
+            self.receiver = Process(target=self._receive_loop,
                                     name=f"{self.username} receiver")
-            self.sender = Process(target=self.send_loop,
+            self.sender = Process(target=self._send_loop,
                                     name=f"{self.username} sender")
             if self.connect():
                 self.ui.start()
@@ -52,7 +54,7 @@ class ChatClient():
                 self.stop()
 
     def connect(self):
-        self.debug("Starting CONNECT")
+        # self.log("STARTING CONNECT")
         try:
             message = Message(type = CONNECT, username = self.username)
             self.send_payload(message.encode())
@@ -61,7 +63,7 @@ class ChatClient():
             for message in decode_history(history):
                 self.append_history(message)
         except ValueError as e:
-            self.debug(e)
+            # self.log(e)
             return False
         else:
             if response['type_code'] == ERROR['code']:
@@ -90,27 +92,26 @@ class ChatClient():
             self.conn.close()
             self.conn = None
 
-    def send_loop(self):
-        self.debug("Starting send loop")
+    def _send_loop(self):
+        self.log("Starting send loop")
+        self.sender
         while self.conn:
-            self.debug("Starting send iter")
             message = self.ui.input()
             if len(message) > 0:
                 try:
                     self.send_message(message)
                 except ValueError as e:
-                    self.debug(e)
+                    self.log(e)
 
-    def receive_loop(self):
-        self.debug("Starting receive loop")
+    def _receive_loop(self):
+        self.log("Starting receive loop")
         while self.conn:
             if self.conn.poll():
                 try:
                     message = Message(payload = self.conn.recv())
-                    if message.type == MESSAGE:
-                        self.update_history(message)
+                    self.update_history(message)
                 except Exception as e:
-                    self.debug(f"Error receiving message: {e}")
+                    self.log(f"Error receiving message: {e}")
 
     def append_history(self, message):
         self.lock.acquire()
@@ -122,6 +123,7 @@ class ChatClient():
         self.ui.redraw()
 
     def send_message(self, message):
+        self.log(f"{message}", level='info')
         message = Message(type=MESSAGE, username = self.username, message = message)
         self.update_history(message)
         self.send_payload(message.encode())
@@ -131,7 +133,7 @@ class ChatClient():
             self.conn.send(payload)
             # response = self.conn.recv()
         except Exception as e:
-            self.debug(f"Error sending message: {e}")
+            self.log(f"Error sending message: {e}")
 
 
 if __name__ == "__main__":
@@ -143,11 +145,15 @@ if __name__ == "__main__":
                         help="server ip", type=str)
     parser.add_argument("-p", metavar="port", default=6000,
                         help="server port", type=int)
+    parser.add_argument('-l', dest='logging', action='store_true')
     args = parser.parse_args()
     if not args.u:
-        args.u= input("username: ")
-    client = ChatClient(args.u, args.i, args.p)
+        args.u = input("username: ")
+    if args.logging:
+        FORMAT = '%(asctime)s:%(levelname)s:%(process)d:%(message)s'
+        logging.basicConfig(filename='client.log', format=FORMAT, level=logging.DEBUG)
     try:
+        client = ChatClient(args.u, args.i, args.p)
         client.start()
     except KeyboardInterrupt:
         client.stop()
